@@ -41,5 +41,86 @@ const validate = (fields) => {
 };
 
 // BEGIN
+export default function signUpHandler() {
+  const root = document.querySelector('[data-container="sign-up"]');
+  const formEl = document.querySelector('[data-form="sign-up"]');
+  if (!formEl) return;
 
+  const submitBtn = formEl.querySelector('[type="submit"]');
+
+  const state = onChange({
+    values: {
+      name: '',
+      email: '',
+      password: '',
+      passwordConfirmation: '',
+    },
+    errors: {},
+    submitting: false,
+  }, () => {
+    renderForm();
+  });
+
+  const renderForm = () => {
+    // Обновляем значения инпутов, если они не совпадают с состоянием
+    Object.entries(state.values).forEach(([fieldName, fieldValue]) => {
+      const input = formEl.querySelector(`[name="${fieldName}"]`);
+      if (input && input.value !== fieldValue) {
+        input.value = fieldValue;
+      }
+    });
+
+    // Убираем классы ошибок и сообщения
+    formEl.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    formEl.querySelectorAll('.invalid-feedback').forEach(el => el.remove());
+
+    // Добавляем ошибки валидации
+    Object.entries(state.errors).forEach(([field, error]) => {
+      const input = formEl.querySelector(`[name="${field}"]`);
+      if (!input) return;
+      input.classList.add('is-invalid');
+
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'invalid-feedback';
+      errorDiv.textContent = error.message;
+      input.parentNode.appendChild(errorDiv);
+    });
+
+    // Управляем состоянием кнопки отправки
+    const hasErrors = !isEmpty(state.errors);
+    const allFilled = Object.values(state.values).every(val => val.trim() !== '');
+    submitBtn.disabled = state.submitting || hasErrors || !allFilled;
+  };
+
+  const onSubmit = async (event) => {
+    event.preventDefault();
+    if (!isEmpty(state.errors) || state.submitting) {
+      return;
+    }
+    state.submitting = true;
+    try {
+      await axios.post(routes.usersPath(), state.values);
+      root.innerHTML = 'User Created!';
+    } catch (error) {
+      state.submitting = false;
+      alert(errorMessages.network.error);
+    }
+  };
+
+  const onInput = (event) => {
+    const { name, value } = event.target;
+    state.values = { ...state.values, [name]: value };
+    state.errors = validate(state.values);
+  };
+
+  formEl.querySelectorAll('input').forEach(input => {
+    input.addEventListener('input', onInput);
+  });
+
+  formEl.addEventListener('submit', onSubmit);
+
+  // Инициализация кнопки
+  submitBtn.disabled = true;
+}
 // END
+
